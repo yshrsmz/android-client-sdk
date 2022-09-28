@@ -1,0 +1,48 @@
+name: publish-chart
+
+on:
+  workflow_dispatch:
+    inputs:
+      bucketeer_version:
+        description: "Bucketeer version"
+        required: true
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  artifacts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          # This is a workaround to ensure the publish_chart won't start before the release workflow.
+          # Because the version is based on the tag, if the publish_chart starts before
+          # the release workflow, it will create a chart with an old version.
+          #      - name: Wait for release note to succeed
+          #        uses: lewagon/wait-on-check-action@v1.0.0
+          #        with:
+          #          ref: ${{ github.ref }}
+          #          # DO NOT CHANGE the check-name. This name is based on the workflow name defined in the release.yaml
+          #          check-name: "Release Please"
+          #          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          #          wait-interval: 10
+
+        # remove 'v' prefix from tag or workflow input
+      - name: Determine version
+        run: |
+          if [ ! -z ${{ github.event.inputs.bucketeer_version }} ]; then
+            temp_version="${{ github.event.inputs.bucketeer_version }}"
+            result=${temp_version#"v"}
+            echo "BUCKETEER_VERSION=${result}" >> $GITHUB_ENV
+          else
+            temp_version="${{ github.event.ref }}"
+            result=${temp_version#"refs/tags/v"}
+            echo "BUCKETEER_VERSION=${result}" >> $GITHUB_ENV
+          fi
+
+      - name: Publish android-client-sdk
+        run: |
+          echo $BUCKETEER_VERSION
